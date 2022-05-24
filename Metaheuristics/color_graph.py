@@ -24,6 +24,38 @@ def nbColorsUsed(coloration):
 
 
 # Algorithme de coloration de graphe en utilisant la métaheuristique RT
+def greedyColoring(graph):
+    numVertices = graph.getVerticesNum()
+    # Coloration du graphe (résultat)
+    coloring = [-1] * numVertices
+
+    # Assigner la première couleur au premier nœud
+    coloring[0] = 0
+    available = [False] * numVertices
+
+    # Assigner des couleurs aux nœuds restants
+    for u in range(numVertices):
+        # Traiter tous les nœuds adjacents et marquer leurs couleurs comme non disponibles
+        neighbors = graph.getNeighbors(u)
+        for i in neighbors:
+            if coloring[i] != -1:
+                available[coloring[i]] = True
+
+        # Trouver la première couleur disponible
+        cr = 0
+        while cr < numVertices:
+            if available[cr] == False:
+                break
+            cr += 1
+
+        # Assigner la couleur trouvée
+        coloring[u] = cr
+        # Remettre les valeurs à faux pour la prochaine itération
+        for i in neighbors:
+            if coloring[i] != -1:
+                available[coloring[i]] = False
+
+    return coloring
 
 
 class gcpGA:
