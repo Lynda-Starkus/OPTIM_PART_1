@@ -1,11 +1,9 @@
 from config import (
     GRAPH,
     COLOR_FILE,
-    POPLUATION_SIZE,
-    GENERATIONS_NUM,
-    MUTATION_PROBABILITY,
     DEBUG,
 )
+
 from graph import Graph
 import matplotlib.pyplot as plt
 import time
@@ -26,158 +24,6 @@ def nbColorsUsed(coloration):
 
 
 # Algorithme de coloration de graphe en utilisant la métaheuristique RT
-def tabucol(
-    graph: Graph,
-    tabu_size=7,
-    reps=100,
-    max_iterations=10000,
-):
-    # Initialiser le nombre de couleurs au plus grand degré parmi tous les nœuds
-    number_of_colors = graph.largestDegree()
-    # Le graphe est supposé être la matrice d'adjacence d'un graphe non orienté sans boucles
-    # Les nœuds sont représentés par des indices, [0, 1, ..., n-1]
-    # Les couleurs sont représentées par des nombres, [0, 1, ..., k-1]
-    colors = list(range(number_of_colors))
-    # Nombre d'itérations de l'algorithme
-    iterations = 0
-    # Initialiser tabu à une file vide
-    tabu = deque()
-
-    # `solution` est un dictionnaire de nœuds vers couleurs
-    solution = dict()
-    # Générer une solution aléatoire
-    for i in range(len(graph)):
-        solution[i] = colors[random.randrange(0, len(colors))]
-
-    # Niveau d'aspiration A(z), représenté par un dictionnaire : f(s) -> meilleur f(s') vu jusqu'à présent
-    aspiration_level = dict()
-
-    while iterations < max_iterations:
-        # Compter les paires de nœuds (i,j) qui sont adjacents et ont la même couleur
-        move_candidates = set()  # Utiliser 'set' pour éviter les doublons
-        conflict_count = 0
-        for i in range(len(graph)):
-            for j in range(
-                i + 1, len(graph)
-            ):  # Supposer que le graphe est non orienté, en ignorant les boucles
-                if graph[i][j] > 0:  # Adjacent
-                    if solution[i] == solution[j]:  # Même couleur
-                        move_candidates.add(i)
-                        move_candidates.add(j)
-                        conflict_count += 1
-        move_candidates = list(
-            move_candidates
-        )  # Convertir en liste pour pouvoir indexer
-
-        if conflict_count == 0:
-            # Coloration valide trouvée
-            break
-
-        # Générer des solutions voisines
-        new_solution = None
-        for r in range(reps):
-            # Choisir un nœud à déplacer
-            node = move_candidates[random.randrange(0, len(move_candidates))]
-
-            # Choisir une couleur autre que la courante
-            new_color = colors[random.randrange(0, len(colors) - 1)]
-            if solution[node] == new_color:
-                # Échanger la dernière couleur avec la couleur actuelle pour ce calcul
-                new_color = colors[-1]
-
-            # Créer une solution voisine
-            new_solution = solution.copy()
-            new_solution[node] = new_color
-            # Compter les paires adjacentes de même couleur dans la nouvelle solution
-            new_conflicts = 0
-            for i in range(len(graph)):
-                for j in range(i + 1, len(graph)):
-                    if graph[i][j] > 0 and new_solution[i] == new_solution[j]:
-                        new_conflicts += 1
-            if new_conflicts < conflict_count:  # Solution améliorée trouvée
-                # Si f(s') <= A(f(s)) [où A(z) a pour valeur par défaut z - 1]
-                if new_conflicts <= aspiration_level.setdefault(
-                    conflict_count, conflict_count - 1
-                ):
-                    # Définir A(f(s)) = f(s') - 1
-                    aspiration_level[conflict_count] = new_conflicts - 1
-
-                    # Autoriser le déplacement tabu s'il est meilleur que tout autre déplacement antérieur.
-                    if (
-                        node,
-                        new_color,
-                    ) in tabu:
-                        tabu.remove((node, new_color))
-                        debugPrint(
-                            "tabu autorisé;", conflict_count, "->", new_conflicts
-                        )
-                        break
-                else:
-                    if (node, new_color) in tabu:
-                        # Le déplacement tabu n'est pas assez bien
-                        continue
-                debugPrint(conflict_count, "->", new_conflicts)
-                break
-
-        # À ce stade, soit on a trouvé une meilleure solution,
-        # soit on a épuisé les itérations, donc on utilise la dernière solution générée
-
-        # La couleur du nœud actuel deviendra tabu
-        # Ajouter à la fin de la file tabu
-        tabu.append((node, solution[node]))
-        if len(tabu) > tabu_size:  # file remplie
-            tabu.popleft()  # Supprimer le déplacement le plus ancien
-
-        # Passer à l'itération suivante de tabucol avec une nouvelle solution
-        solution = new_solution
-        iterations += 1
-        if iterations % 500 == 0:
-            debugPrint("Itération:", iterations)
-
-    # À ce stade, soit `conflict_count` est égal à 0 et une coloration a été trouvée,
-    # soit il n'y a plus d'itérations sans coloration valide.
-    if conflict_count != 0:
-        debugPrint(f"Pas de coloration trouvée avec {number_of_colors} couleurs.")
-        return None
-    else:
-        coloring = list(solution.values())
-        debugPrint(f"Coloration trouvée: {coloring}")
-        return coloring
-
-
-# Retourne une coloration du graphe avec l'algorithme glouton
-def greedyColoring(graph):
-    numVertices = graph.getVerticesNum()
-    # Coloration du graphe (résultat)
-    coloring = [-1] * numVertices
-
-    # Assigner la première couleur au premier nœud
-    coloring[0] = 0
-    available = [False] * numVertices
-
-    # Assigner des couleurs aux nœuds restants
-    for u in range(numVertices):
-        # Traiter tous les nœuds adjacents et marquer leurs couleurs comme non disponibles
-        neighbors = graph.getNeighbors(u)
-        for i in neighbors:
-            if coloring[i] != -1:
-                available[coloring[i]] = True
-
-        # Trouver la première couleur disponible
-        cr = 0
-        while cr < numVertices:
-            if available[cr] == False:
-                break
-            cr += 1
-
-        # Assigner la couleur trouvée
-        coloring[u] = cr
-        # Remettre les valeurs à faux pour la prochaine itération
-        for i in neighbors:
-            if coloring[i] != -1:
-                available[coloring[i]] = False
-
-    return coloring
 
 
 class gcpGA:
@@ -186,6 +32,7 @@ class gcpGA:
         self.population_size = pop_size
         self.mutation_probability = mut_proba
         self.number_generations = num_gen
+
         assert num_gen > 0
         # Pour le graphe
         self.graph = graph
@@ -343,6 +190,7 @@ def printAlgResults(algname, nbColors, coloration, timeTaken):
     print(f"* Solution obtenue avec l'algorithme '{algname}' :")
     print(f"\t- Nombre de couleurs utilisées : {nbColors}")
     print(f"\t- Coloration : {coloration}")
+
     print(f"\t- Temps pris par l'algorithme : {timeTaken} seconde(s)\n")
 
 
@@ -376,14 +224,11 @@ def execColoringAlgorithm(graph, algname, algfunc, *args, **kwargs):
 if __name__ == "__main__":
     GRAPH.draw(title="Graphe en entrée")
 
-    # Exécuter l'algorithme de coloration gloutonne (Greedy algorithm)
-    execColoringAlgorithm(GRAPH, "Coloration gloutonne", greedyColoring)
+    POPLUATION_SIZE = 200
+    GENERATIONS_NUM = 300
+    MUTATION_PROBABILITY = 0.4 
+  
 
     # Exécuter l'algorithme GA
     execColoringAlgorithm(GRAPH, "GA", gcpGAWrapper)
-
-    # Exécuter l'algorithme Tabu coloring
-    execColoringAlgorithm(GRAPH, "Tabu coloring", tabucol)
-
-    # Afficher la fenêtre graphique
-    plt.show()
+    
