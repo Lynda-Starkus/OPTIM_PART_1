@@ -5,7 +5,7 @@ from os import path
 # Fichier des couleurs
 COLOR_FILE = "colors.txt"
 # Fichier d'instance par défaut
-GRAPH_FILE_DEFAULT = "datasets/myciel4.col"
+GRAPH_FILE_DEFAULT = "datasets/myciel5.col"
 # Nombre de noeuds du graphe pour les graphes aléatoires
 N = 25
 # Générer un graphe aléatoire ou pas
